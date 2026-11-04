@@ -1,48 +1,95 @@
 # My Custom Planner
 
 Generator for a printable A5 day-on-two-pages planner, starting with 2027.
-One PDF per month is built from SVG page templates (designed in Inkscape) and an
-Excel file with a computer-tech fact for each day.
+One PDF per month is built from SVG page templates (designed in Inkscape) and Excel files
+with a fact for each day.
 
-## Status
+## Usage
 
-Setup and analysis only. No generator code yet.
+Requirements: Python 3.11+, Inkscape 1.2+ (on `PATH`, or set the `INKSCAPE` environment
+variable to its full path), and `pip install -r requirements.txt`.
+
+```bash
+python -m planner 2027-01            # one month
+python -m planner 2027-01 2027-02    # several months
+python -m planner 2027               # whole year
+```
+
+Output for each month, in `output/YYYY-MM/`:
+
+| File | Use |
+|------|-----|
+| `planner-YYYY-MM-A5.pdf` | All pages in reading order, for checking on screen |
+| `planner-YYYY-MM-A4-print.pdf` | Print-ready: 4 A5 pages per A4 sheet in booklet order. Print double-sided, **flip on short edge**, **actual size** (no scaling), then cut each sheet in half. |
+| `report.txt` | Days without a fact, facts that don't fit, font problems |
+
+## How a month is built
+
+A month with D days has 2D + 2 A5 pages:
+
+| Page | Side | Template | Content |
+|------|------|----------|---------|
+| 1 | right | `01-month-cover.svg` | Month cover |
+| 2k | left | `02-day-tasks.svg` | Day k: date, mini calendars (this and next month), task list with pre-filled habits, daily tracker, appointments |
+| 2k+1 | right | `03-day-notes.svg` | Day k: date, fact of the day with source, day count, daily notes |
+| last | left | `04-month-end.svg` | Notes and tasks to be migrated to the next month |
+
+The page count must be a multiple of 4 for booklet printing. When it isn't (months of 28
+and 30 days), two extra "Notes" pages go before the month-end page.
+
+## Checks
+
+- **Facts that don't fit:** each fact is laid out in an unlimited frame and compared with
+  the real one. Inkscape silently drops lines that don't fit, so any overflow is reported
+  and must be fixed by shortening the text in Excel. Font sizes are never reduced. The
+  report also flags titles wider than the fact frame and source lines wider than the
+  notes area.
+- **Fonts:** if Inkscape falls back to a substitute font, the report lists it.
+
+## Editing
+
+- **Layout:** open a file in `templates/` with Inkscape and save it as Inkscape SVG. The
+  generator finds fields by their Inkscape label (Object > Layers and Objects). Keep the
+  labels the generator uses: `Day Number`, `Month Year Weekday`, `Month Name`,
+  `Notes Title`, `Day Count`, `Fact - Title`, `Fact - Date`, `Fact - Text`,
+  `Fact - Text frame`, `Fact - Source`, `Habit - Priority`, `Habit - Text`, the groups
+  `Calendar - This Month` and `Calendar - Next Month` (with cells `MN`, `WKr0`, `Drc`),
+  `Fact` and `Daily Notes Lines`.
+- **Habits:** `planner.toml`, one `[[habits]]` block per row.
+- **Facts:** `data/facts/*.xlsx`, one row per fact with columns Month, Day, Year, Title,
+  Text, Source, URL. Rows without Title and Text are ignored. With several facts for the
+  same day, the one used rotates by year. Several files can be listed in `planner.toml`.
 
 ## Repository layout
 
 ```
-reference/                 Source material, kept as-is (not used by the generator)
-  2025-templates/          Nov-Dec 2025 single-page templates (with the tech-fact block)
-  2026-october/            Full October 2026 month: 4-page Inkscape template + exported PDFs
-  2026-mini-calendars/     Month modules that were pasted into pages by hand in 2026
-data/                      Tech facts per day (Excel; incomplete, test months only)
+planner/       the generator (python -m planner)
+templates/     one Inkscape SVG per page type
+data/facts/    facts per calendar day (Excel)
+fonts/         free fonts used by the templates, with licenses
+planner.toml   configuration: fact files, habits
+tools/         one-off scripts that created templates/ and data/ from reference/
+reference/     2025-2026 source material, kept as-is
 ```
 
-To be added: `templates/` (one SVG per page type), `src/` (the generator), `fonts/`,
-and `output/` (generated PDFs, not committed).
+## Decisions
 
-## Month structure
+- **Rendering:** the templates use Inkscape flowed text, and only Inkscape recalculates
+  wrapping and alignment after the text changes. The generator fills the SVGs with Python
+  and exports them through the Inkscape command line.
+- **Week numbers:** ISO 8601. All date values are calculated, not read from Excel.
+- **Fonts:** free and redistributable (see `fonts/README.md`), so the repo can become
+  public. On Linux they are loaded from `fonts/` automatically. On Windows and macOS,
+  install them first.
+- **Facts:** each fact shows its source name and URL, for credit and so it can be checked.
 
-A month with D days has 2D + 2 A5 pages:
+## Roadmap
 
-| Page | Side | Content |
-|------|------|---------|
-| 1 | right | Month cover (later: month overview table) |
-| 2k | left | Day k: date, mini calendars (this and next month), prioritized task list, daily tracker, appointment schedule |
-| 2k+1 | right | Day k: date, tech fact of the day (to be reintroduced), daily notes |
-| 2D+2 | left | End of month: notes and tasks to be migrated to the next month |
-
-Printing: pages are grouped in fours and printed as a booklet on A4. Each sheet is
-folded and cut, which gives two A5 leaves printed front and back.
-
-## Decisions so far
-
-- **Rendering:** the templates use Inkscape flowed text (`shape-inside`). Only Inkscape
-  recalculates wrapping and alignment after the text changes, so the generator fills
-  the SVGs with Python and exports them with the Inkscape command line.
-- **Overflow:** if a fact doesn't fit its frame, the generator flags it and the text is
-  shortened in Excel. Font sizes are never reduced.
-- **Week numbers:** ISO 8601, as in the 2026 mini calendars.
-- **Fonts:** the plan is to move to freely redistributable fonts so the repo can become
-  public: TeX Gyre Schola (in place of Century Schoolbook), TeX Gyre Adventor (Century
-  Gothic) and Carlito (Calibri). A replacement for Brush Script MT is still open.
+1. **Personal 2027 planner (current).** Same layout as 2026 with facts restored, one file
+   per month.
+2. **Facts.** Complete the 2027 facts. Optionally add freely licensed sources (for example
+   Wikipedia, CC BY-SA) and publish an empty facts template for other people.
+3. **Configurable planner (to be analysed separately).** Page sizes, week start, date
+   formats, choosing and placing widgets, possibly an online tool. This needs a layout
+   defined in code rather than hand-drawn SVGs, and a layout of its own that doesn't
+   derive from Franklin Planner.

@@ -1,0 +1,16 @@
+# Planner configuration
+
+# Fact files, read in this order. Several facts for the same day rotate by planner year.
+facts = ["data/facts/computer-history-museum.xlsx"]
+
+# Rows pre-filled at the top of the daily task list (handwritten style).
+# priority is optional (e.g. "A0"); add or remove [[habits]] blocks freely.
+[[habits]]
+priority = "A0"
+text = "Daily planning"
+
+[[habits]]
+text = "30 minutes walk"
+
+[[habits]]
+text = "Read 15 pages"
