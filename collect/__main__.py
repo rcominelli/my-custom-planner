@@ -3,6 +3,7 @@
   python -m collect candidates 11              gather raw candidates for November
   python -m collect candidates 11 --days 1-5   only some days
   python -m collect picture "Compaq Portable"  free picture of a Wikipedia article
+  python -m collect check drafts.json          check that written facts fit the page
   python -m collect merge drafts.json          add written facts to the Excel file
   python -m collect pictures                   download free pictures named in 'Picture From'
 
@@ -162,6 +163,27 @@ def cmd_pictures(args) -> int:
     return 0
 
 
+def cmd_check(args) -> int:
+    """Check that drafted facts fit the page, before merging them."""
+    from planner.build import check_facts
+    from planner.facts import Fact
+    drafts = json.loads(Path(args.drafts).read_text(encoding="utf-8"))
+    facts = {}
+    for i, f in enumerate(drafts):
+        if f.get("update") and not f.get("text"):
+            continue
+        fact = Fact(f["month"], f["day"], f.get("year"), f.get("new_title") or f["title"], f.get("text", ""),
+                    f.get("source", ""), f.get("url", ""))
+        facts[f"{f['month']:02d}-{f['day']:02d} #{i}: {fact.title[:40]}"] = fact
+    out = ROOT / "build" / "check"
+    out.mkdir(parents=True, exist_ok=True)
+    issues = check_facts(facts, out)
+    print(f"{len(facts)} drafted facts checked, {len(issues)} problem(s)")
+    for i in issues:
+        print(f"  OVERFLOW {i}")
+    return 1 if issues else 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="collect", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -176,11 +198,13 @@ def main(argv=None) -> int:
     p.add_argument("article")
     m = sub.add_parser("merge", help="add written facts (JSON) to the facts file")
     m.add_argument("drafts")
+    k = sub.add_parser("check", help="check that drafted facts (JSON) fit the page")
+    k.add_argument("drafts")
     g = sub.add_parser("pictures", help="download free pictures for rows with 'Picture From'")
     g.add_argument("--month", type=int)
     args = ap.parse_args(argv)
     return {"candidates": cmd_candidates, "picture": cmd_picture, "merge": cmd_merge,
-            "pictures": cmd_pictures}[args.cmd](args)
+            "pictures": cmd_pictures, "check": cmd_check}[args.cmd](args)
 
 
 if __name__ == "__main__":
