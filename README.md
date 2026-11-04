@@ -66,8 +66,10 @@ and 30 days), two extra "Notes" pages go before the month-end page.
 - **Pictures:** the Image column holds a file path relative to the Excel file's folder
   (e.g. `images/12-29-shockley.png`). The picture is scaled to fit the hidden
   `Picture area` rectangle on the notes page, keeping its proportions, and pinned to its
-  bottom-right corner (at most half the page wide and 90 mm high). Resize the rectangle
-  in Inkscape to change the rule.
+  bottom-right corner (at most a third of the page wide and a quarter of the page high).
+  It sits on a white box 1.5 mm larger on every side, with the credit (Image Credit) in
+  black inside the box above the picture. Resize the rectangle in Inkscape to change the
+  maximum size; the border is `PICTURE_BORDER` in `planner/svgfill.py`.
 
 ## Collecting facts
 

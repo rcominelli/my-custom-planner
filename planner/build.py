@@ -12,7 +12,7 @@ from . import dates, render
 from .facts import Fact, pick
 from PIL import Image
 
-from .svgfill import Page, add_caption, clone_with_offset, place_image, row_pitch, set_cell, set_text
+from .svgfill import Page, clone_with_offset, place_image, row_pitch, set_cell, set_text
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "templates"
@@ -92,9 +92,7 @@ def notes_page(day: dt.date | None, fact: Fact | None, title: str = "Daily Notes
         try:
             with Image.open(fact.image) as im:
                 size, mime = im.size, Image.MIME.get(im.format, "image/png")
-            img = place_image(area, fact.image, size, mime)
-            if fact.image_credit:
-                add_caption(img, fact.image_credit)
+            place_image(area, fact.image, size, mime, fact.image_credit)
             report.pictures += 1
         except (OSError, ValueError) as e:
             report.picture_problems.append(f"{day:%d %b}: cannot use {fact.image.name} ({e.__class__.__name__})")

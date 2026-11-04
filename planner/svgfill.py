@@ -135,9 +135,29 @@ def clone_with_offset(el, dy: float):
     return new
 
 
-def place_image(area, image: Path, px_size: tuple[int, int], mime: str):
-    """Insert image scaled to fit the area rectangle, keeping proportions, bottom-right aligned.
+MM = 96 / 25.4
+PICTURE_BORDER = 1.5 * MM   # white margin around the picture and its caption
+CAPTION_SIZE = 5.2          # px
+CAPTION_GAP = 0.5 * MM      # between caption baseline and picture
+# Carlito: credits can be in Cyrillic or Greek, which TeX Gyre Adventor lacks
+CAPTION_FONT = Path(__file__).resolve().parents[1] / "fonts" / "Carlito-Regular.ttf"
+CAPTION_STYLE = (f"font-size:{CAPTION_SIZE}px;line-height:1;font-family:Carlito;"
+                 "-inkscape-font-specification:Carlito;text-anchor:end;text-align:end;"
+                 "fill:#000000")
 
+
+def caption_width(text: str) -> float:
+    """Width of the caption in document units, measured with the real font."""
+    from PIL import ImageFont
+    font = ImageFont.truetype(str(CAPTION_FONT), 100)
+    return font.getlength(text) * CAPTION_SIZE / 100
+
+
+def place_image(area, image: Path, px_size: tuple[int, int], mime: str, caption: str = ""):
+    """Picture scaled to fit the area, pinned bottom-right, on a white box with its caption.
+
+    The box is the picture plus PICTURE_BORDER on every side, plus room for the caption
+    above it; if the caption is wider than the picture, the box widens to the left.
     The picture is embedded (data URI), so the page file does not depend on file paths.
     """
     ax, ay = float(area.get("x")), float(area.get("y"))
@@ -145,37 +165,39 @@ def place_image(area, image: Path, px_size: tuple[int, int], mime: str):
     iw, ih = px_size
     scale = min(aw / iw, ah / ih)
     w, h = iw * scale, ih * scale
-    el = etree.Element(f"{{{SVG}}}image", {
+    right, bottom = ax + aw, ay + ah
+    x, y = right - w, bottom - h
+
+    b = PICTURE_BORDER
+    left, top = x, y
+    if caption:
+        left = min(x, right - caption_width(caption))
+        top = y - CAPTION_GAP - CAPTION_SIZE
+    box = etree.Element(f"{{{SVG}}}rect", {
+        "id": f"picture-box-{next(_uid)}", LABEL: "Picture - Box", "style": "fill:#ffffff;stroke:none",
+        "x": f"{left - b:.4f}", "y": f"{top - b:.4f}",
+        "width": f"{right - left + 2 * b:.4f}", "height": f"{bottom - top + 2 * b:.4f}"})
+    img = etree.Element(f"{{{SVG}}}image", {
         "id": f"picture-{next(_uid)}", LABEL: "Picture",
-        "x": f"{ax + aw - w:.4f}", "y": f"{ay + ah - h:.4f}",
-        "width": f"{w:.4f}", "height": f"{h:.4f}",
+        "x": f"{x:.4f}", "y": f"{y:.4f}", "width": f"{w:.4f}", "height": f"{h:.4f}",
         "preserveAspectRatio": "none",
         "{http://www.w3.org/1999/xlink}href":
             f"data:{mime};base64," + base64.b64encode(image.read_bytes()).decode("ascii")})
-    tr = area.get("transform")
-    if tr:
-        el.set("transform", tr)
-    area.addnext(el)
-    return el
-
-
-CAPTION_STYLE = ("font-size:4.8px;line-height:1;font-family:'TeX Gyre Adventor';"
-                 "-inkscape-font-specification:'TeX Gyre Adventor';text-anchor:end;text-align:end;"
-                 "fill:#808080")
-
-
-def add_caption(image_el, text: str):
-    """Small grey line right-aligned just above the picture (e.g. its credit)."""
-    x = float(image_el.get("x")) + float(image_el.get("width"))
-    y = float(image_el.get("y")) - 1.8
-    t = etree.Element(f"{{{SVG}}}text", {"id": f"caption-{next(_uid)}", LABEL: "Picture - Credit",
-                                         f"{{http://www.w3.org/XML/1998/namespace}}space": "preserve",
-                                         "x": f"{x:.4f}", "y": f"{y:.4f}", "style": CAPTION_STYLE})
-    t.text = text
-    if image_el.get("transform"):
-        t.set("transform", image_el.get("transform"))
-    image_el.addnext(t)
-    return t
+    items = [box, img]
+    if caption:
+        t = etree.Element(f"{{{SVG}}}text", {
+            "id": f"caption-{next(_uid)}", LABEL: "Picture - Credit",
+            "{http://www.w3.org/XML/1998/namespace}space": "preserve",
+            "x": f"{right:.4f}", "y": f"{y - CAPTION_GAP:.4f}", "style": CAPTION_STYLE})
+        t.text = caption
+        items.append(t)
+    anchor = area
+    for el in items:
+        if area.get("transform"):
+            el.set("transform", area.get("transform"))
+        anchor.addnext(el)
+        anchor = el
+    return img
 
 
 def row_pitch(el) -> float:

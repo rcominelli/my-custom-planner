@@ -176,7 +176,7 @@ if it is freely licensed, and fills in Image and Image Credit:
 Run it on the laptop: Wikipedia limits requests from shared cloud addresses, so it can
 stall in a Claude session. Rows where no free picture exists are listed and simply stay
 without a picture. To get a different picture, change `Picture From`, clear Image and
-Image Credit, and run the command again. The credit is printed in small grey text above
+Image Credit, and run the command again. The credit is printed in small black text above
 the picture. Then commit and push the new pictures and the Excel file (section 5).
 
 **Your own picture:**
@@ -187,7 +187,8 @@ the picture. Then commit and push the new pictures and the Excel file (section 5
    in Image Credit if you know them.
 
 The picture is scaled to fit the "Picture area" in the bottom-right corner of the notes
-page (at most half the page wide and 90 mm high), keeping its proportions.
+page (at most a third of the page wide and a quarter of the page high), keeping its
+proportions, on a white box with a small border that also holds the credit.
 
 ### Habits: `planner.toml`
 
