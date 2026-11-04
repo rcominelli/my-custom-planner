@@ -189,6 +189,7 @@ always be generated again.
 | After `git pull`, `requirements.txt` changed | `.venv\Scripts\python -m pip install -r requirements.txt` |
 | Python was upgraded, or `.venv` is broken | `Remove-Item -Recurse -Force .venv` then repeat step 1.3 |
 | Clear temporary files | `Remove-Item -Recurse -Force build` |
+| pip shows "A new release of pip is available" | Optional, harmless: `.venv\Scripts\python -m pip install --upgrade pip` |
 
 ## 7. Troubleshooting
 
