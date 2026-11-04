@@ -87,7 +87,7 @@ def merge(pdfs: list[Path], out: Path) -> None:
 def impose_booklets(a5_pdf: Path, out: Path) -> int:
     """Groups of 4 A5 pages on one A4 sheet: front [4|1], back [2|3].
 
-    Print double-sided, flip on short edge, actual size. Fold or cut each sheet in half:
+    Print double-sided, flip on short edge, page sizing "Fit" (tested Nov 2026). Fold or cut each sheet in half:
     the right half carries pages 1/2, the left half pages 3/4.
     """
     pages = PdfReader(str(a5_pdf)).pages

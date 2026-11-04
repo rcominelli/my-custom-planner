@@ -22,7 +22,7 @@ Output for each month, in `output/YYYY-MM/`:
 | File | Use |
 |------|-----|
 | `planner-YYYY-MM-A5.pdf` | All pages in reading order, for checking on screen |
-| `planner-YYYY-MM-A4-print.pdf` | Print-ready: 4 A5 pages per A4 sheet in booklet order. Print double-sided, **flip on short edge**, **actual size** (no scaling), then cut each sheet in half. |
+| `planner-YYYY-MM-A4-print.pdf` | Print-ready: 4 A5 pages per A4 sheet in booklet order. Print double-sided, **flip on short edge**, page sizing **Fit**, then cut each sheet in half. |
 | `report.txt` | Days without a fact, facts that don't fit, font problems |
 
 ## How a month is built

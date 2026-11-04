@@ -101,12 +101,11 @@ Fix, run the same command again, repeat until the report is clean.
 Open `planner-YYYY-MM-A4-print.pdf` and print with:
 
 - **double-sided, flip on short edge**
-- **actual size** (100%, no "fit")
+- **page sizing: Fit** (with "Actual size" the printer cuts off content near the edges)
 - A4, landscape
 
 Each sheet carries 4 A5 pages. Cut it in half: the right half holds pages 1-2 of the
-group, the left half pages 3-4. Print one sheet first to check the alignment and that
-nothing near the edges is cut off. If something is cut off, print with "fit" instead.
+group, the left half pages 3-4.
 
 ---
 
