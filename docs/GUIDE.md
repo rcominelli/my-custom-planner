@@ -90,6 +90,7 @@ explorer output\2026-11
 | `OVERFLOW ... fact text needs about N more line(s)` | The text is cut off on the page | Shorten the text in Excel |
 | `OVERFLOW ... title is Npx wider` | The title is wider than the fact text | Shorten the title |
 | `OVERFLOW ... source line is wider` | The credit line is too long | Shorten the URL (e.g. drop the `#...` part) or the source name |
+| `Draft (not yet reviewed) facts printed on ...` | Those days used facts written by Claude that you haven't reviewed | Review them in Excel (section 3.2), or accept them |
 | `PICTURE ... cannot use` | The picture file is missing or unreadable | Check the file name in the Image column |
 | `WARNING substitute fonts embedded` | Inkscape didn't find the fonts | Repeat step 1.2, then run again |
 | `All checks passed` | Ready to print | |
@@ -111,21 +112,75 @@ group, the left half pages 3-4.
 
 ## 3. Monthly content
 
-### Facts: `data\facts\tech-history.xlsx`
+### 3.1 Facts file: `data\facts\tech-history.xlsx`
 
-One row per fact, with columns Month, Day, Year, Title, Text, Source, URL, Image.
+One row per fact, with columns Month, Day, Year, Title, Text, Source, URL, Picture From,
+Image, Image Credit, Status. The file doesn't depend on the year: the same facts serve every year.
 
 - **Empty day:** rows without Title and Text are ignored.
-- **Several facts for one day:** add more rows with the same Month and Day. The planner
-  rotates between them by year.
+- **Several facts for one day** (the goal is 3-4): one row each, same Month and Day. Each
+  year the planner prints a different one. It goes through all of them before repeating
+  one, in a mixed order that never changes, so rebuilding a month gives the same pages.
 - **Saving:** save the Excel file before generating, because the generator reads the saved
   version. If you get a `PermissionError`, close the file in Excel.
 
-### Pictures
+### 3.2 Reviewing facts
 
-1. Save the picture (PNG or JPG) in `data\facts\images\`. Name it `MM-DD-short-title.png`
+Facts written by Claude arrive with Status `draft`. Read them, correct anything you like
+directly in the cell, then set Status to:
+
+| Status | Effect |
+|--------|--------|
+| `approved` (or empty) | Printed |
+| `draft` | Printed, and listed in the report so you know it wasn't reviewed |
+| `rejected` | Never printed (keep the row so it isn't suggested again) |
+
+After editing texts or titles, check that everything still fits (takes about a minute and
+covers the whole file, no PDFs built):
+
+```powershell
+.venv\Scripts\python -m planner --check-facts
+```
+
+### 3.3 Getting new facts
+
+Collecting and writing facts is done with Claude in a cloud session on this repository,
+because the writing step needs Claude:
+
+1. Ask Claude to collect and write facts for a month (for example "write tech facts for
+   December, 3-4 per day"). Claude runs `python -m collect candidates 12`, writes the
+   facts in its own words from the sources, merges them with `python -m collect merge`,
+   checks them and pushes the updated Excel file.
+2. On the laptop: `git pull`, download the pictures (3.4), then review (3.2).
+
+**Fallback for sites that block automated access:** save the page text by hand as a text
+file named `MM-DD-anything.txt` (for example `11-04-compaq.txt`) in
+`data\facts\inbox\`, with the page address on the first line. Commit and push it
+(section 5). Claude then uses it like any other source.
+
+### 3.4 Pictures
+
+**From Wikipedia (automatic).** The `Picture From` column names a Wikipedia article (or a
+Commons file as `File:name.jpg`). This command downloads the article's main picture, only
+if it is freely licensed, and fills in Image and Image Credit:
+
+```powershell
+.venv\Scripts\python -m collect pictures              # all rows still without a picture
+.venv\Scripts\python -m collect pictures --month 11   # only one month
+```
+
+Run it on the laptop: Wikipedia limits requests from shared cloud addresses, so it can
+stall in a Claude session. Rows where no free picture exists are listed and simply stay
+without a picture. To get a different picture, change `Picture From`, clear Image and
+Image Credit, and run the command again. The credit is printed in small grey text above
+the picture. Then commit and push the new pictures and the Excel file (section 5).
+
+**Your own picture:**
+
+1. Save it (PNG or JPG) in `data\facts\images\`. Name it `MM-DD-short-title.png`
    so the folder stays sorted.
-2. Write `images/MM-DD-short-title.png` in the Image column.
+2. Write `images/MM-DD-short-title.png` in the Image column, and the author and license
+   in Image Credit if you know them.
 
 The picture is scaled to fit the "Picture area" in the bottom-right corner of the notes
 page (at most half the page wide and 90 mm high), keeping its proportions.

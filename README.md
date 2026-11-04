@@ -59,8 +59,9 @@ and 30 days), two extra "Notes" pages go before the month-end page.
   `Fact` and `Daily Notes Lines`.
 - **Habits:** `planner.toml`, one `[[habits]]` block per row.
 - **Facts:** `data/facts/*.xlsx`, one row per fact with columns Month, Day, Year, Title,
-  Text, Source, URL, Image. Rows without Title and Text are ignored. With several facts
-  for the same day, the one used rotates by year. Several files can be listed in
+  Text, Source, URL, Image, Image Credit, Status. Rows without Title and Text, and rows
+  with Status `rejected`, are ignored. With several facts for the same day, the one used
+  rotates by year. Several files can be listed in
   `planner.toml`.
 - **Pictures:** the Image column holds a file path relative to the Excel file's folder
   (e.g. `images/12-29-shockley.png`). The picture is scaled to fit the hidden
@@ -68,12 +69,41 @@ and 30 days), two extra "Notes" pages go before the month-end page.
   bottom-right corner (at most half the page wide and 90 mm high). Resize the rectangle
   in Inkscape to change the rule.
 
+## Collecting facts
+
+`collect/` builds the facts file; it is separate from the planner, which only reads the
+Excel file.
+
+```bash
+python -m collect candidates 11      # raw candidates for November -> build/candidates/
+python -m collect merge drafts.json  # add written facts, download free pictures + credits
+python -m planner --check-facts      # check every fact fits its frame
+```
+
+1. **Candidates** come from This Day in Tech History, the Computer History Museum,
+   Wikipedia's "On this day" feed (events, births and deaths filtered by theme) and text
+   files saved by hand in `data/facts/inbox/` (fallback for sites that block automated
+   access). Their text is the sources' own wording and is only used as reference, so
+   `build/` is never committed.
+2. **Writing** is done by Claude in a session: it picks 3-4 facts per day, writes each
+   one in its own words sized to the frame, credits the page it is based on, and names a
+   Wikipedia article for the picture. The result is a JSON list (see `merge` in
+   `collect/__main__.py`).
+3. **Merge** adds the facts with Status `draft`. Pictures come from Wikimedia Commons,
+   only with free licenses, with author and license in Image Credit. Entries with
+   `"update": true` change an existing fact (text, title, picture) instead.
+4. **Review** in Excel: set Status to `approved` or `rejected` (see docs/GUIDE.md, 3.2).
+
+The planner picks one fact per day, cycling through all of a day's facts over the years
+in a fixed shuffled order, so the same file serves many years.
+
 ## Repository layout
 
 ```
 planner/       the generator (python -m planner)
+collect/       the facts collector (python -m collect)
 templates/     one Inkscape SVG per page type
-data/facts/    facts per calendar day (Excel) and their pictures (images/)
+data/facts/    facts per calendar day (Excel), their pictures (images/) and hand-saved texts (inbox/)
 docs/          hands-on guide
 fonts/         free fonts used by the templates, with licenses
 planner.toml   configuration: fact files, habits

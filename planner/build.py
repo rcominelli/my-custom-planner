@@ -12,7 +12,7 @@ from . import dates, render
 from .facts import Fact, pick
 from PIL import Image
 
-from .svgfill import Page, clone_with_offset, place_image, row_pitch, set_cell, set_text
+from .svgfill import Page, add_caption, clone_with_offset, place_image, row_pitch, set_cell, set_text
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "templates"
@@ -27,6 +27,7 @@ class Report:
     sheets: int = 0
     missing_facts: list[dt.date] = field(default_factory=list)
     pictures: int = 0
+    drafts: list[dt.date] = field(default_factory=list)
     picture_problems: list[str] = field(default_factory=list)
     overflows: list[str] = field(default_factory=list)
     font_warnings: set[str] = field(default_factory=set)
@@ -36,6 +37,9 @@ class Report:
         if self.missing_facts:
             out.append(f"  No fact for {len(self.missing_facts)} day(s): "
                        + ", ".join(d.strftime("%d") for d in self.missing_facts))
+        if self.drafts:
+            out.append(f"  Draft (not yet reviewed) facts printed on {len(self.drafts)} day(s): "
+                       + ", ".join(d.strftime("%d") for d in self.drafts))
         out += [f"  PICTURE {p}" for p in self.picture_problems]
         out += [f"  OVERFLOW {o}" for o in self.overflows]
         if self.font_warnings:
@@ -88,7 +92,9 @@ def notes_page(day: dt.date | None, fact: Fact | None, title: str = "Daily Notes
         try:
             with Image.open(fact.image) as im:
                 size, mime = im.size, Image.MIME.get(im.format, "image/png")
-            place_image(area, fact.image, size, mime)
+            img = place_image(area, fact.image, size, mime)
+            if fact.image_credit:
+                add_caption(img, fact.image_credit)
             report.pictures += 1
         except (OSError, ValueError) as e:
             report.picture_problems.append(f"{day:%d %b}: cannot use {fact.image.name} ({e.__class__.__name__})")
@@ -122,11 +128,12 @@ def _style_px(style: str, prop: str, default: float) -> float:
     return float(m.group(1)) if m else default
 
 
-def check_facts(facts_by_day: dict[dt.date, Fact], build_dir: Path) -> list[str]:
+def check_facts(facts_by_day: dict[str, Fact], build_dir: Path) -> list[str]:
     """Lay every fact out once in an unlimited frame and compare with the real frame.
 
     Flags: text taller than its frame (Inkscape would silently drop the extra lines),
     a title wider than the frame, a source line wider than the notes area.
+    Keys are labels used in the messages (e.g. "04 Nov").
     """
     if not facts_by_day:
         return []
@@ -168,14 +175,14 @@ def check_facts(facts_by_day: dict[dt.date, Fact], build_dir: Path) -> list[str]
         tx, ty, tw, th = box[ids[(day, "text")]]
         over = (ty + th) - (fy + fh)
         if over > 1.0:
-            issues.append(f"{day:%d %b}: fact text needs about {math.ceil(over / line_pitch)} "
+            issues.append(f"{day}: fact text needs about {math.ceil(over / line_pitch)} "
                           f"more line(s) than the frame holds; shorten it")
         x, _, w, _ = box[ids[(day, "title")]]
         if x + w > fx + fw + 0.5:
-            issues.append(f"{day:%d %b}: title is {x + w - fx - fw:.0f}px wider than the fact frame")
+            issues.append(f"{day}: title is {x + w - fx - fw:.0f}px wider than the fact frame")
         x, _, w, _ = box[ids[(day, "source")]]
         if x + w > lx + lw + 0.5:
-            issues.append(f"{day:%d %b}: source line is {x + w - lx - lw:.0f}px wider than the notes area")
+            issues.append(f"{day}: source line is {x + w - lx - lw:.0f}px wider than the notes area")
     return issues
 
 
@@ -191,6 +198,7 @@ def build_month(year: int, month: int, facts, habits, build_root: Path, out_root
     days = dates.days_of_month(year, month)
     chosen = {d: pick(facts, d) for d in days}
     report.missing_facts = [d for d, f in chosen.items() if f is None]
+    report.drafts = [d for d, f in chosen.items() if f and f.status == "draft"]
 
     pages = [("cover", cover_page(year, month))]
     for d in days:
@@ -213,6 +221,6 @@ def build_month(year: int, month: int, facts, habits, build_root: Path, out_root
     report.pages = len(pdfs)
     report.sheets = render.impose_booklets(a5, out_dir / f"planner-{tag}-A4-print.pdf")
     report.font_warnings = render.unexpected_fonts(a5)
-    report.overflows = check_facts({d: f for d, f in chosen.items() if f}, build_dir)
+    report.overflows = check_facts({f"{d:%d %b}": f for d, f in chosen.items() if f}, build_dir)
     (out_dir / "report.txt").write_text(report.text() + "\n", encoding="utf-8")
     return report

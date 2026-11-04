@@ -159,5 +159,24 @@ def place_image(area, image: Path, px_size: tuple[int, int], mime: str):
     return el
 
 
+CAPTION_STYLE = ("font-size:4.8px;line-height:1;font-family:'TeX Gyre Adventor';"
+                 "-inkscape-font-specification:'TeX Gyre Adventor';text-anchor:end;text-align:end;"
+                 "fill:#808080")
+
+
+def add_caption(image_el, text: str):
+    """Small grey line right-aligned just above the picture (e.g. its credit)."""
+    x = float(image_el.get("x")) + float(image_el.get("width"))
+    y = float(image_el.get("y")) - 1.8
+    t = etree.Element(f"{{{SVG}}}text", {"id": f"caption-{next(_uid)}", LABEL: "Picture - Credit",
+                                         f"{{http://www.w3.org/XML/1998/namespace}}space": "preserve",
+                                         "x": f"{x:.4f}", "y": f"{y:.4f}", "style": CAPTION_STYLE})
+    t.text = text
+    if image_el.get("transform"):
+        t.set("transform", image_el.get("transform"))
+    image_el.addnext(t)
+    return t
+
+
 def row_pitch(el) -> float:
     return float(el.get(f"{{{PLANNER}}}row-pitch"))
