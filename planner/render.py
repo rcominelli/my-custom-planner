@@ -20,6 +20,21 @@ A4_LANDSCAPE = (841.8898, 595.2756)
 WINDOWS_DEFAULT = Path(r"C:\Program Files\Inkscape\bin\inkscape.com")
 
 
+def ensure_writable(*paths: Path) -> None:
+    """Stop early, with a clear message, if an output file is open in another program.
+
+    On Windows a PDF open in a viewer, or an Excel file open in Excel, is locked.
+    """
+    for path in paths:
+        if path.exists():
+            try:
+                with open(path, "ab"):
+                    pass
+            except PermissionError:
+                raise SystemExit(f"Cannot write {path.name}: it is open in another program "
+                                 f"(PDF viewer or Excel). Close it and run the command again.")
+
+
 def inkscape_exe() -> str:
     """INKSCAPE env var, else PATH, else the default Windows install folder.
 

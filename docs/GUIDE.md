@@ -153,6 +153,10 @@ because the writing step needs Claude:
    checks them and pushes the updated Excel file.
 2. On the laptop: `git pull`, download the pictures (3.4), then review (3.2).
 
+**One rule:** Git cannot merge two different versions of an Excel file. Before asking
+Claude for new facts, commit and push your own changes to the Excel file (section 5), and
+`git pull` before editing it again on the laptop.
+
 **Fallback for sites that block automated access:** save the page text by hand as a text
 file named `MM-DD-anything.txt` (for example `11-04-compaq.txt`) in
 `data\facts\inbox\`, with the page address on the first line. Commit and push it
@@ -249,6 +253,9 @@ always be generated again.
 
 | Error | Fix |
 |-------|-----|
+| `Unlink of file '...xlsx' failed. Should I try again?` during `git pull` | The Excel file is open in Excel. Close it, then answer `y` |
+| `Cannot write ...: it is open in another program` | Close that PDF (or the Excel file) and run the command again |
+| `Corrupt EXIF data` warning during `collect pictures` | Harmless: a picture has damaged camera metadata. Ignore it |
 | `Inkscape not found` | Install Inkscape, or set `$env:INKSCAPE` (step 1.1) |
 | `No module named planner` | Run the command from `C:\RaF\Projects\my-custom-planner` |
 | `No module named openpyxl` (or `lxml`, `pypdf`, `PIL`) | Run the pip command from step 1.3 |

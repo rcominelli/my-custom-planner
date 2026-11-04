@@ -194,6 +194,8 @@ def build_month(year: int, month: int, facts, habits, build_root: Path, out_root
     build_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
     report = Report(tag)
+    render.ensure_writable(out_dir / f"planner-{tag}-A5.pdf", out_dir / f"planner-{tag}-A4-print.pdf",
+                           out_dir / "report.txt")
 
     days = dates.days_of_month(year, month)
     chosen = {d: pick(facts, d) for d in days}

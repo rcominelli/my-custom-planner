@@ -19,6 +19,8 @@ import re
 import sys
 from pathlib import Path
 
+from planner.render import ensure_writable
+
 from . import factsfile, pictures
 from .sources import SOURCES, THEMES, collect_day
 
@@ -97,6 +99,7 @@ def _attach(row: dict, pic: dict, args) -> bool:
 
 def cmd_merge(args) -> int:
     """Add (or update) facts from a JSON list. No network: pictures are a separate step."""
+    ensure_writable(args.facts)
     rows = factsfile.read(args.facts)
     for r in rows:
         if (r.get("Title") or r.get("Text")) and not r.get("Status"):
@@ -138,6 +141,7 @@ def cmd_merge(args) -> int:
 
 def cmd_pictures(args) -> int:
     """Download free pictures for rows with 'Picture From' and no Image yet."""
+    ensure_writable(args.facts)
     rows = factsfile.read(args.facts)
     todo = [r for r in rows if r.get("Picture From") and not r.get("Image")
             and (args.month is None or r["Month"] == args.month)]
