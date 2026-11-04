@@ -120,6 +120,17 @@ def build(name, layer_label, page_index, relabels, src_2025):
             el.set(LABEL, label)
             by_id(root, parent_id).append(el)
 
+    if name == "03-day-notes.svg":
+        # Picture of the day: bottom-right corner at (146 mm, 204 mm), as in December 2025;
+        # at most half the page wide and 90 mm high. The generator scales each picture to
+        # fit this hidden rectangle, keeping its proportions, pinned to the bottom-right.
+        mm = 96 / 25.4
+        w, h = 74 * mm, 90 * mm
+        etree.SubElement(keep, f"{{{SVG}}}rect", {
+            "id": "picture-area", LABEL: "Picture area", "style": "display:none;fill:#ff6600",
+            "x": f"{146 * mm - w:.4f}", "y": f"{204 * mm - h:.4f}",
+            "width": f"{w:.4f}", "height": f"{h:.4f}"})
+
     if name == "02-day-tasks.svg":
         # Pre-filled habit rows: keep row 1 as the prototype, remember the row pitch,
         # drop rows 2-3 (the generator clones the prototype once per configured habit).

@@ -10,7 +10,7 @@ import openpyxl
 from .dates import MONTHS
 
 REQUIRED = ["Month", "Day", "Title", "Text"]
-OPTIONAL = ["Year", "Source", "URL"]
+OPTIONAL = ["Year", "Source", "URL", "Image"]
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,7 @@ class Fact:
     text: str
     source: str
     url: str
+    image: Path | None = None  # resolved path; may not exist (reported at build time)
 
     @property
     def date_line(self) -> str:
@@ -37,6 +38,14 @@ class Fact:
 
 def _clean(value) -> str:
     return " ".join(str(value).split()) if value is not None else ""
+
+
+def _resolve_image(base: Path, name: str) -> Path:
+    """Relative to the Excel file's folder; a bare file name is also looked up in images/."""
+    path = base / name
+    if not path.exists() and (base / "images" / name).exists():
+        path = base / "images" / name
+    return path.resolve()
 
 
 def load_facts(paths: list[Path]) -> dict[tuple[int, int], list[Fact]]:
@@ -57,10 +66,11 @@ def load_facts(paths: list[Path]) -> dict[tuple[int, int], list[Fact]]:
             title, text = _clean(get(row, "Title")), _clean(get(row, "Text"))
             if not title and not text:
                 continue
-            year = get(row, "Year")
+            year, image = get(row, "Year"), _clean(get(row, "Image"))
             fact = Fact(int(get(row, "Month")), int(get(row, "Day")),
                         int(year) if year not in (None, "") else None,
-                        title, text, _clean(get(row, "Source")), _clean(get(row, "URL")))
+                        title, text, _clean(get(row, "Source")), _clean(get(row, "URL")),
+                        _resolve_image(path.parent, image) if image else None)
             facts.setdefault((fact.month, fact.day), []).append(fact)
     return facts
 

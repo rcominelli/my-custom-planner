@@ -10,7 +10,9 @@ from pathlib import Path
 
 from . import dates, render
 from .facts import Fact, pick
-from .svgfill import Page, clone_with_offset, row_pitch, set_cell, set_text
+from PIL import Image
+
+from .svgfill import Page, clone_with_offset, place_image, row_pitch, set_cell, set_text
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "templates"
@@ -24,19 +26,22 @@ class Report:
     pages: int = 0
     sheets: int = 0
     missing_facts: list[dt.date] = field(default_factory=list)
+    pictures: int = 0
+    picture_problems: list[str] = field(default_factory=list)
     overflows: list[str] = field(default_factory=list)
     font_warnings: set[str] = field(default_factory=set)
 
     def text(self) -> str:
-        out = [f"{self.month}: {self.pages} A5 pages, {self.sheets} A4 sheets"]
+        out = [f"{self.month}: {self.pages} A5 pages, {self.sheets} A4 sheets, {self.pictures} picture(s)"]
         if self.missing_facts:
             out.append(f"  No fact for {len(self.missing_facts)} day(s): "
                        + ", ".join(d.strftime("%d") for d in self.missing_facts))
+        out += [f"  PICTURE {p}" for p in self.picture_problems]
         out += [f"  OVERFLOW {o}" for o in self.overflows]
         if self.font_warnings:
             out.append(f"  WARNING substitute fonts embedded: {sorted(self.font_warnings)} "
                        "(install the fonts in fonts/)")
-        if not (self.missing_facts or self.overflows or self.font_warnings):
+        if not (self.missing_facts or self.overflows or self.font_warnings or self.picture_problems):
             out.append("  All checks passed")
         return "\n".join(out)
 
@@ -76,8 +81,17 @@ def tasks_page(day: dt.date, habits: list[dict]):
     return p
 
 
-def notes_page(day: dt.date | None, fact: Fact | None, title: str = "Daily Notes"):
+def notes_page(day: dt.date | None, fact: Fact | None, title: str = "Daily Notes", report=None):
     p = Page(NOTES)
+    area = p.find("Picture area")
+    if fact and fact.image:
+        try:
+            with Image.open(fact.image) as im:
+                size, mime = im.size, Image.MIME.get(im.format, "image/png")
+            place_image(area, fact.image, size, mime)
+            report.pictures += 1
+        except (OSError, ValueError) as e:
+            report.picture_problems.append(f"{day:%d %b}: cannot use {fact.image.name} ({e.__class__.__name__})")
     p.set("Notes Title", title)
     if day:
         p.set("Day Number", str(day.day))
@@ -181,7 +195,7 @@ def build_month(year: int, month: int, facts, habits, build_root: Path, out_root
     pages = [("cover", cover_page(year, month))]
     for d in days:
         pages.append((f"{d.day:02d}-tasks", tasks_page(d, habits)))
-        pages.append((f"{d.day:02d}-notes", notes_page(d, chosen[d])))
+        pages.append((f"{d.day:02d}-notes", notes_page(d, chosen[d], report=report)))
     if (len(pages) + 1) % 4:  # booklet groups of 4: add a blank notes spread before the month end
         pages.append(("extra-left", month_end_page(year, month, title="Notes")))
         pages.append(("extra-right", notes_page(None, None, title="Notes")))

@@ -8,6 +8,7 @@ Two kinds of text exist in the templates:
 """
 from __future__ import annotations
 
+import base64
 import copy
 import itertools
 from pathlib import Path
@@ -132,6 +133,30 @@ def clone_with_offset(el, dy: float):
     new.set("transform", f"translate(0,{dy:.4f})" + (f" {tr}" if tr else ""))
     el.addnext(new)
     return new
+
+
+def place_image(area, image: Path, px_size: tuple[int, int], mime: str):
+    """Insert image scaled to fit the area rectangle, keeping proportions, bottom-right aligned.
+
+    The picture is embedded (data URI), so the page file does not depend on file paths.
+    """
+    ax, ay = float(area.get("x")), float(area.get("y"))
+    aw, ah = float(area.get("width")), float(area.get("height"))
+    iw, ih = px_size
+    scale = min(aw / iw, ah / ih)
+    w, h = iw * scale, ih * scale
+    el = etree.Element(f"{{{SVG}}}image", {
+        "id": f"picture-{next(_uid)}", LABEL: "Picture",
+        "x": f"{ax + aw - w:.4f}", "y": f"{ay + ah - h:.4f}",
+        "width": f"{w:.4f}", "height": f"{h:.4f}",
+        "preserveAspectRatio": "none",
+        "{http://www.w3.org/1999/xlink}href":
+            f"data:{mime};base64," + base64.b64encode(image.read_bytes()).decode("ascii")})
+    tr = area.get("transform")
+    if tr:
+        el.set("transform", tr)
+    area.addnext(el)
+    return el
 
 
 def row_pitch(el) -> float:

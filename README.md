@@ -6,6 +6,8 @@ with a fact for each day.
 
 ## Usage
 
+Step-by-step setup and daily commands for Windows: **[docs/GUIDE.md](docs/GUIDE.md)**.
+
 Requirements: Python 3.11+, Inkscape 1.2+ (on `PATH`, or set the `INKSCAPE` environment
 variable to its full path), and `pip install -r requirements.txt`.
 
@@ -31,7 +33,7 @@ A month with D days has 2D + 2 A5 pages:
 |------|------|----------|---------|
 | 1 | right | `01-month-cover.svg` | Month cover |
 | 2k | left | `02-day-tasks.svg` | Day k: date, mini calendars (this and next month), task list with pre-filled habits, daily tracker, appointments |
-| 2k+1 | right | `03-day-notes.svg` | Day k: date, fact of the day with source, day count, daily notes |
+| 2k+1 | right | `03-day-notes.svg` | Day k: date, fact of the day with source, day count, daily notes, picture of the fact |
 | last | left | `04-month-end.svg` | Notes and tasks to be migrated to the next month |
 
 The page count must be a multiple of 4 for booklet printing. When it isn't (months of 28
@@ -52,20 +54,27 @@ and 30 days), two extra "Notes" pages go before the month-end page.
   generator finds fields by their Inkscape label (Object > Layers and Objects). Keep the
   labels the generator uses: `Day Number`, `Month Year Weekday`, `Month Name`,
   `Notes Title`, `Day Count`, `Fact - Title`, `Fact - Date`, `Fact - Text`,
-  `Fact - Text frame`, `Fact - Source`, `Habit - Priority`, `Habit - Text`, the groups
+  `Fact - Text frame`, `Fact - Source`, `Picture area`, `Habit - Priority`, `Habit - Text`, the groups
   `Calendar - This Month` and `Calendar - Next Month` (with cells `MN`, `WKr0`, `Drc`),
   `Fact` and `Daily Notes Lines`.
 - **Habits:** `planner.toml`, one `[[habits]]` block per row.
 - **Facts:** `data/facts/*.xlsx`, one row per fact with columns Month, Day, Year, Title,
-  Text, Source, URL. Rows without Title and Text are ignored. With several facts for the
-  same day, the one used rotates by year. Several files can be listed in `planner.toml`.
+  Text, Source, URL, Image. Rows without Title and Text are ignored. With several facts
+  for the same day, the one used rotates by year. Several files can be listed in
+  `planner.toml`.
+- **Pictures:** the Image column holds a file path relative to the Excel file's folder
+  (e.g. `images/12-29-shockley.png`). The picture is scaled to fit the hidden
+  `Picture area` rectangle on the notes page, keeping its proportions, and pinned to its
+  bottom-right corner (at most half the page wide and 90 mm high). Resize the rectangle
+  in Inkscape to change the rule.
 
 ## Repository layout
 
 ```
 planner/       the generator (python -m planner)
 templates/     one Inkscape SVG per page type
-data/facts/    facts per calendar day (Excel)
+data/facts/    facts per calendar day (Excel) and their pictures (images/)
+docs/          hands-on guide
 fonts/         free fonts used by the templates, with licenses
 planner.toml   configuration: fact files, habits
 tools/         one-off scripts that created templates/ and data/ from reference/
@@ -82,6 +91,10 @@ reference/     2025-2026 source material, kept as-is
   public. On Linux they are loaded from `fonts/` automatically. On Windows and macOS,
   install them first.
 - **Facts:** each fact shows its source name and URL, for credit and so it can be checked.
+  Titles must not be wider than the fact text.
+- **Pictures:** facts and pictures from third-party sites are copyrighted. That's fine
+  while the repo is private. Before publishing, start a fresh public repo without
+  `data/facts/` and its history.
 
 ## Roadmap
 
