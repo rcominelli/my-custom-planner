@@ -124,6 +124,16 @@ Image, Image Credit, Status. The file doesn't depend on the year: the same facts
 - **Saving:** save the Excel file before generating, because the generator reads the saved
   version. If you get a `PermissionError`, close the file in Excel.
 
+**Which fact is printed in which year.** This lists, for every day, the fact chosen in each
+year you give, side by side, in `output\facts-2027-2028.csv` (no PDFs are built):
+
+```powershell
+.venv\Scripts\python -m planner --list-facts 2027 2028
+```
+
+The last column flags days where the same fact appears in more than one of those years.
+That happens only when a day has fewer facts than the number of years listed.
+
 ### 3.2 Reviewing facts
 
 Facts written by Claude arrive with Status `draft`. Read them, correct anything you like
@@ -241,8 +251,12 @@ After editing, generate a month again and check the result.
 
 ## 5. Saving work to GitHub
 
+Always start with `git pull`, before changing or committing anything. If someone else
+(for example Claude) pushed in the meantime, your own push would otherwise be refused.
+
 ```powershell
 cd C:\RaF\Projects\my-custom-planner
+git pull
 git status
 git add -A
 git commit -m "Facts for February 2027"
@@ -270,6 +284,8 @@ always be generated again.
 | `Unlink of file '...xlsx' failed. Should I try again?` during `git pull` | The Excel file is open in Excel. Close it, then answer `y` |
 | `Cannot write ...: it is open in another program` | Close that PDF (or the Excel file) and run the command again |
 | `Corrupt EXIF data` warning during `collect pictures` | Harmless: a picture has damaged camera metadata. Ignore it |
+| `git push` refused with `fetch first` | GitHub has commits you don't have. Run `git pull`, then `git push` again |
+| `git pull` opens an editor with `MERGE_MSG` | Git is combining your commits with new ones from GitHub. Close the tab without changes, then `git push` |
 | `Inkscape not found` | Install Inkscape, or set `$env:INKSCAPE` (step 1.1) |
 | `No module named planner` | Run the command from `C:\RaF\Projects\my-custom-planner` |
 | `No module named openpyxl` (or `lxml`, `pypdf`, `PIL`) | Run the pip command from step 1.3 |
