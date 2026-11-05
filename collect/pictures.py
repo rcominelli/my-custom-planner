@@ -19,6 +19,45 @@ WIDTH = 1000  # px; about 340 dpi at the maximum printed width of 74 mm
 BATCH = 50
 
 
+# Organisations credited in scripts our fonts cannot print: their usual English names.
+KNOWN_NAMES = {
+    "朝日新聞社": "The Asahi Shimbun", "共同通信社": "Kyodo News", "日本学士院": "Japan Academy",
+    "新华社": "Xinhua News Agency", "中国新闻网": "China News Service",
+    "文部科学省": "Japanese Ministry of Education (MEXT)",
+}
+MAX_ARTIST = 60
+
+
+def clean_artist(raw: str) -> str:
+    """Readable author name from the Commons 'Artist' field (already stripped of HTML)."""
+    s = raw
+    for k, v in KNOWN_NAMES.items():
+        s = s.replace(k, v)
+    s = re.sub(r"The original uploader was (.+?) at [\w-]+ Wikipedia\.?", r"\1", s)
+    s = re.sub(r"Original uploader was (.+?) at [\w.-]+\.?", r"\1", s)
+    s = re.sub(r"Copyright held by [\w ]*Wikipedia ", "", s)
+    s = re.sub(r"\S+\.(?:jpe?g|png|svg|gif|tiff?)\s*:\s*", "", s, flags=re.I)  # "File.jpg : author"
+    s = re.sub(r"\b(?:[a-z]{2,3}:)?User:", "", s, flags=re.I)
+    s = re.sub(r"\((?:talk|credited as[^)]*|per [^)]*)\)|\[\d+\]", "", s, flags=re.I)
+    s = re.sub(r"^(?:Source|Credit Line|Photo(?:graph)?(?:ed)? by|Published by)\s*:?\s*", "", s, flags=re.I)
+    s = re.sub(r",?\s*(?:uploaded|alpha masking|restored|cropped|derivative work|Derivative work|"
+               r"svg version|Editing|Alterations)\b.*$", "", s, flags=re.I)
+    s = re.sub(r"^Own work\b.*$", "Wikimedia Commons contributor", s, flags=re.I)
+    s = re.sub(r"^Unknown author\b.*$", "Unknown author", s, flags=re.I)
+    if " | " in s:  # the same name in two scripts: keep the Latin one if there is one
+        parts = [x.strip() for x in s.split(" | ")]
+        s = next((x for x in parts if re.fullmatch(r"[\x20-\u024f]+", x)), parts[0])
+    # keep only the first author when several are separated by ';'
+    s = s.split(";")[0]
+    s = " ".join(s.replace(" ,", ",").split()).strip(" ,.:-")
+    if not s or re.search(r"[\u0590-\u05ff\u3040-\u9fff]", s):  # Hebrew/CJK left: no font for it
+        s = "Wikimedia Commons contributor"
+    if len(s) > MAX_ARTIST:  # cut at a comma or a word boundary, never mid-word
+        cut = s[:MAX_ARTIST]
+        s = cut[:cut.rfind(",")] if "," in cut[20:] else cut[:cut.rfind(" ")]
+    return s.strip(" ,.:-") or "Unknown author"
+
+
 def _plain(s: str) -> str:
     s = " ".join(unescape(re.sub(r"<[^>]+>", " ", s or "")).split())
     s = re.sub(r"\(\s+", "(", re.sub(r"\s+\)", ")", s))
@@ -65,9 +104,7 @@ def _file_info(files: list[str]) -> dict[str, dict]:
             meta = info.get("extmetadata", {})
             if str(meta.get("NonFree", {}).get("value", "")).lower() in ("true", "1"):
                 continue
-            artist = _plain(meta.get("Artist", {}).get("value", "")) or "Unknown author"
-            if len(artist) > 50:
-                artist = artist[:47].rstrip() + "..."
+            artist = clean_artist(_plain(meta.get("Artist", {}).get("value", "")))
             name = alias.get(page["title"], page["title"]).removeprefix("File:")
             out[name.replace(" ", "_")] = {
                 "file": name, "url": info.get("thumburl") or info["url"], "original": info["url"],

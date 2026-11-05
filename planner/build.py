@@ -31,6 +31,7 @@ class Report:
     picture_problems: list[str] = field(default_factory=list)
     overflows: list[str] = field(default_factory=list)
     font_warnings: set[str] = field(default_factory=set)
+    odd_chars: list[str] = field(default_factory=list)
 
     def text(self) -> str:
         out = [f"{self.month}: {self.pages} A5 pages, {self.sheets} A4 sheets, {self.pictures} picture(s)"]
@@ -43,8 +44,13 @@ class Report:
         out += [f"  PICTURE {p}" for p in self.picture_problems]
         out += [f"  OVERFLOW {o}" for o in self.overflows]
         if self.font_warnings:
-            out.append(f"  WARNING substitute fonts embedded: {sorted(self.font_warnings)} "
-                       "(install the fonts in fonts/)")
+            if self.odd_chars:
+                out.append(f"  WARNING substitute font {sorted(self.font_warnings)} used for characters "
+                           "our fonts lack; edit these texts in the facts file:")
+                out += [f"    {o}" for o in self.odd_chars]
+            else:
+                out.append(f"  WARNING substitute fonts embedded: {sorted(self.font_warnings)} "
+                           "(install the fonts in fonts/, see docs/GUIDE.md 1.2)")
         if not (self.missing_facts or self.overflows or self.font_warnings or self.picture_problems):
             out.append("  All checks passed")
         return "\n".join(out)
@@ -184,6 +190,25 @@ def check_facts(facts_by_day: dict[str, Fact], build_dir: Path) -> list[str]:
     return issues
 
 
+def unsupported_characters(chosen: dict) -> list[str]:
+    """Characters our fonts do not have (Latin, punctuation; Greek/Cyrillic only in credits)."""
+    def ok(ch: str, caption: bool) -> bool:
+        o = ord(ch)
+        return (o <= 0x24F or 0x2000 <= o <= 0x206F or ch in "π€™"
+                or (caption and 0x370 <= o <= 0x4FF))
+    found = []
+    for day, f in chosen.items():
+        if not f:
+            continue
+        for name, value, caption in (("title", f.title, False), ("text", f.text, False),
+                                     ("source", f.source_line, False),
+                                     ("picture credit", f.image_credit, True)):
+            bad = "".join(sorted({c for c in value or "" if not ok(c, caption)}))
+            if bad:
+                found.append(f"{day:%d %b} {name}: {bad!r} in {value[:70]!r}")
+    return found
+
+
 # --- month -----------------------------------------------------------------
 
 def build_month(year: int, month: int, facts, habits, build_root: Path, out_root: Path) -> Report:
@@ -221,6 +246,8 @@ def build_month(year: int, month: int, facts, habits, build_root: Path, out_root
     report.pages = len(pdfs)
     report.sheets = render.impose_booklets(a5, out_dir / f"planner-{tag}-A4-print.pdf")
     report.font_warnings = render.unexpected_fonts(a5)
+    if report.font_warnings:
+        report.odd_chars = unsupported_characters(chosen)
     report.overflows = check_facts({f"{d:%d %b}": f for d, f in chosen.items() if f}, build_dir)
     (out_dir / "report.txt").write_text(report.text() + "\n", encoding="utf-8")
     return report

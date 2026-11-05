@@ -93,6 +93,7 @@ explorer output\2026-11
 | `Draft (not yet reviewed) facts printed on ...` | Those days used facts written by Claude that you haven't reviewed | Review them in Excel (section 3.2), or accept them |
 | `PICTURE ... cannot use` | The picture file is missing or unreadable | Check the file name in the Image column |
 | `WARNING substitute fonts embedded` | Inkscape didn't find the fonts | Repeat step 1.2, then run again |
+| `WARNING substitute font ... used for characters our fonts lack` | A text contains characters none of our fonts has (e.g. Chinese or Japanese in a picture credit); the lines below name the day and text | Edit that text in the Excel file (for credits: run `collect credits` first) |
 | `All checks passed` | Ready to print | |
 
 Fix, run the same command again, repeat until the report is clean.
@@ -188,6 +189,14 @@ stall in a Claude session. Rows where no free picture exists are listed and simp
 without a picture. To get a different picture, change `Picture From`, clear Image and
 Image Credit, and run the command again. The credit is printed in small black text above
 the picture. Then commit and push the new pictures and the Excel file (section 5).
+
+**Refreshing picture credits.** Fetches the author and licence of every downloaded picture
+again and rewrites the credit in a cleaned-up form (no wiki leftovers such as "User:" or
+"(talk)", no names cut off with "..."). Credits you typed yourself are not touched:
+
+```powershell
+.venv\Scripts\python -m collect credits
+```
 
 **List of facts without a picture.** Exports every fact that has no picture (rejected facts
 excluded) to `output\missing-pictures.csv`, which opens in Excel:

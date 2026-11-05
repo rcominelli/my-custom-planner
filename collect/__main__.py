@@ -7,6 +7,7 @@
   python -m collect merge drafts.json          add written facts to the Excel file
   python -m collect pictures                   download free pictures named in 'Picture From'
   python -m collect missing                    list the facts without a picture (CSV)
+  python -m collect credits                    fetch picture credits again, cleaned up
 
 The step in between (choosing candidates and writing each fact in original words, sized
 to the page) is done by Claude, from the candidates file. Pictures and credits are
@@ -164,6 +165,37 @@ def cmd_pictures(args) -> int:
     return 0
 
 
+def cmd_credits(args) -> int:
+    """Fetch author and license again for downloaded pictures and rewrite their credit.
+
+    Only credits made by this tool (ending in 'Wikimedia Commons') are rewritten; credits
+    typed by hand are left alone.
+    """
+    ensure_writable(args.facts)
+    rows = factsfile.read(args.facts)
+    todo = [r for r in rows if r.get("Image") and r.get("Picture From")
+            and str(r.get("Image Credit") or "").endswith("Wikimedia Commons")
+            and (args.month is None or r["Month"] == args.month)]
+    if not todo:
+        print("No credits to refresh.")
+        return 0
+    print(f"Fetching credits for {len(todo)} picture(s) from Wikipedia...")
+    found = pictures.find_many(sorted({r["Picture From"] for r in todo}))
+    changed = 0
+    for r in todo:
+        pic = found.get(r["Picture From"])
+        if not pic:
+            print(f"  {r['Month']:02d}-{r['Day']:02d} no longer found: {r['Picture From']!r} (credit kept)")
+            continue
+        new = pictures.credit(pic)
+        if new != r["Image Credit"]:
+            r["Image Credit"] = new
+            changed += 1
+    factsfile.write(args.facts, rows)
+    print(f"{changed} of {len(todo)} credit(s) updated")
+    return 0
+
+
 def cmd_missing(args) -> int:
     """Export the facts that have no picture to a CSV file (opens in Excel)."""
     import csv
@@ -227,6 +259,8 @@ def main(argv=None) -> int:
     m.add_argument("drafts")
     k = sub.add_parser("check", help="check that drafted facts (JSON) fit the page")
     k.add_argument("drafts")
+    cr = sub.add_parser("credits", help="fetch picture credits again and rewrite them (cleaned)")
+    cr.add_argument("--month", type=int)
     x = sub.add_parser("missing", help="export the facts without a picture to a CSV file")
     x.add_argument("--month", type=int)
     x.add_argument("--out", help="CSV file (default: output/missing-pictures.csv)")
@@ -235,7 +269,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     return {"candidates": cmd_candidates, "picture": cmd_picture, "merge": cmd_merge,
             "pictures": cmd_pictures, "check": cmd_check,
-            "missing": cmd_missing}[args.cmd](args)
+            "missing": cmd_missing, "credits": cmd_credits}[args.cmd](args)
 
 
 if __name__ == "__main__":
