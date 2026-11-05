@@ -6,6 +6,7 @@
   python -m collect check drafts.json          check that written facts fit the page
   python -m collect merge drafts.json          add written facts to the Excel file
   python -m collect pictures                   download free pictures named in 'Picture From'
+  python -m collect missing                    list the facts without a picture (CSV)
 
 The step in between (choosing candidates and writing each fact in original words, sized
 to the page) is done by Claude, from the candidates file. Pictures and credits are
@@ -163,6 +164,32 @@ def cmd_pictures(args) -> int:
     return 0
 
 
+def cmd_missing(args) -> int:
+    """Export the facts that have no picture to a CSV file (opens in Excel)."""
+    import csv
+    rows = [r for r in factsfile.read(args.facts) if (r.get("Title") or r.get("Text"))
+            and not r.get("Image") and (r.get("Status") or "") != "rejected"
+            and (args.month is None or r["Month"] == args.month)]
+    for r in rows:
+        r["Reason"] = ("no free picture found for 'Picture From'" if r.get("Picture From")
+                       else "no 'Picture From' given")
+    out = Path(args.out) if args.out else ROOT / "output" / "missing-pictures.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    ensure_writable(out)
+    cols = ["Month", "Day", "Year", "Title", "Source", "URL", "Picture From", "Status", "Reason"]
+    # utf-8-sig and semicolons: Excel on Windows (with European settings) opens it directly
+    with open(out, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(cols)
+        for r in rows:
+            w.writerow([r.get(c) or "" for c in cols])
+    tried = sum(1 for r in rows if r.get("Picture From"))
+    print(f"{len(rows)} fact(s) without a picture: {tried} with no free picture found, "
+          f"{len(rows) - tried} without 'Picture From'")
+    print(f"List written to {out}")
+    return 0
+
+
 def cmd_check(args) -> int:
     """Check that drafted facts fit the page, before merging them."""
     from planner.build import check_facts
@@ -200,11 +227,15 @@ def main(argv=None) -> int:
     m.add_argument("drafts")
     k = sub.add_parser("check", help="check that drafted facts (JSON) fit the page")
     k.add_argument("drafts")
+    x = sub.add_parser("missing", help="export the facts without a picture to a CSV file")
+    x.add_argument("--month", type=int)
+    x.add_argument("--out", help="CSV file (default: output/missing-pictures.csv)")
     g = sub.add_parser("pictures", help="download free pictures for rows with 'Picture From'")
     g.add_argument("--month", type=int)
     args = ap.parse_args(argv)
     return {"candidates": cmd_candidates, "picture": cmd_picture, "merge": cmd_merge,
-            "pictures": cmd_pictures, "check": cmd_check}[args.cmd](args)
+            "pictures": cmd_pictures, "check": cmd_check,
+            "missing": cmd_missing}[args.cmd](args)
 
 
 if __name__ == "__main__":

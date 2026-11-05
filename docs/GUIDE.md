@@ -179,6 +179,19 @@ without a picture. To get a different picture, change `Picture From`, clear Imag
 Image Credit, and run the command again. The credit is printed in small black text above
 the picture. Then commit and push the new pictures and the Excel file (section 5).
 
+**List of facts without a picture.** Exports every fact that has no picture (rejected facts
+excluded) to `output\missing-pictures.csv`, which opens in Excel:
+
+```powershell
+.venv\Scripts\python -m collect missing              # whole year
+.venv\Scripts\python -m collect missing --month 12   # one month
+```
+
+The Reason column says whether a `Picture From` was given but no free picture was found
+(try another article name, or add your own picture), or no `Picture From` was given at
+all. To check again later whether free pictures have become available, just run
+`collect pictures` again: it retries every row that still has no picture.
+
 **Your own picture:**
 
 1. Save it (PNG or JPG) in `data\facts\images\`. Name it `MM-DD-short-title.png`
